@@ -1,11 +1,13 @@
 from fastapi import APIRouter
 
+from models.model import UrlCheck
+
 
 app_parsing = APIRouter(prefix="/parsing")
 
 
 @app_parsing.post("/add_item")
-async def add_item() -> None:
+async def add_item(url: UrlCheck) -> None:
     """
     Функция добавления товара на мониторинг.
 
