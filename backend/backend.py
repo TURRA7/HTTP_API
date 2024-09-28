@@ -1,4 +1,3 @@
-import asyncio
 import json
 import aiohttp
 
@@ -7,11 +6,11 @@ async def get_html(url: str):
     """
     Функция получения данных с HTML страницы.
 
-    args:
+    Args:
 
         url: URL адресс товара.
 
-    returns:
+    Returns:
 
         Возвращает словарь с данными сайта(МВИДЕО).
     """
@@ -25,19 +24,33 @@ async def get_html(url: str):
             return json.loads(text)
 
 
-async def get_element(data_info: dict, data_price: dict) -> dict:
+async def get_info_item(data_info: dict) -> dict:
     """
-    Функция поиска значения элемента.
+    Функция поиска информации о продукте.
 
-    args:
+    Args:
 
         data_info: Словарь с данными о товаре(страница с API).
-        data_price: Словарь с данными о цене(страница с API).
 
-    returns:
-        Возвращает словарь с распарсенными данными о товаре.
+    Returns:
+
+        Возвращает словарь с общей информацией о товаре.
     """
     return {"name": data_info['body']['name'],
-            "price": data_price['body']['materialPrices'][0]['price']['salePrice'],
             "description": data_info['body']['description'],
             "rating": data_info['body']['rating']['star']}
+
+
+async def get_price_item(data_price: dict) -> dict:
+    """
+    Функция поиска цены продукта.
+
+    Args:
+
+        data_price: Словарь с данными о цене(страница с API).
+
+    Returns:
+
+        Возвращает словарь с ценой товара.
+    """
+    return {"price": data_price['body']['materialPrices'][0]['price']['salePrice']}

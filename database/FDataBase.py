@@ -1,6 +1,8 @@
 """Модуль для работы с базой данных."""
 import datetime
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Float
+from typing import AsyncGenerator
+from fastapi import Depends
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Float, select
 from sqlalchemy.ext.asyncio import (
     create_async_engine, AsyncSession)
 from sqlalchemy.orm import sessionmaker, relationship, DeclarativeBase
@@ -12,8 +14,10 @@ DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}"
 # Создание асинхронного движка.
 engine = create_async_engine(DATABASE_URL)
 # Создание асинхронной сессии.
-async_session = sessionmaker(
-    engine, class_=AsyncSession, expire_on_commit=False
+AsyncSessionLocal = sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False
 )
 
 # Базовый декларотивный класс.
@@ -25,7 +29,7 @@ class Product(Base):
     """
     Таблица с общей информацией о продукте.
 
-    args:
+    Args:
 
         id: id товара.
         name: Название товара.
@@ -45,14 +49,16 @@ class Product(Base):
     url_info = Column(String, nullable=False)
     url_price = Column(String, nullable=False)
 
-    price_history = relationship("PriceHistory", back_populates="product")
+    price_history = relationship("PriceHistory",
+                                 back_populates="product",
+                                 cascade="all, delete")
 
 
 class PriceHistory(Base):
     """
     Таблица истории цен на товары.
 
-    args:
+    Args:
 
         id: id записи.
         product_id: id продукта.
@@ -82,38 +88,119 @@ async def delete_tables() -> None:
         await conn.run_sync(Base.metadata.drop_all)
 
 
-async def add_item(name: str, description: str,
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    async with AsyncSessionLocal() as session:
+            yield session
+
+
+async def add_item_info(name: str, description: str,
                    rating: float, url_info: str,
-                   url_price: str) -> None:
+                   url_price: str,
+                   session: AsyncSession = Depends(get_session)) -> bool:
     """
     Функция добавления товара.
 
-    args:
+    Args:
         name: Название товара.
         description: Описание товара.
         rating: Рейтинг товара.
         url_info: Ссылка на API с общей информацией о товаре.
         url_price: Ссылка на API с информацией о цене товара.
+    
+    Returns:
+        Добавляет информацию о товаре в базе данных,
+        в случае успеха возвращает True,
+        иначе False, если товар не найден в базе данных.
     """
-    async with AsyncSession(engine) as session:
-        async with session.begin():
-            result = Product(name=name, description=description,
-                            rating=rating, url_info=url_info, url_price=url_price)
-            session.add(result)
-            await session.commit()
+    result = Product(name=name, description=description,
+                    rating=rating, url_info=url_info, url_price=url_price)
+    if not result:
+        return None
+    session.add(result)
+    await session.commit()
+    return True
 
 
-async def add_item(product_id: int, price: float):
+async def add_item_price(product_id: int, price: float,
+                         session: AsyncSession = Depends(get_session)) -> bool:
     """
     Функция добавления цены на товар.
 
-    args:
+    Args:
 
         product_id: id товара, к которому добавляется цена
         price: Цена на товар.
+    
+    Returns:
+        Добавляет цену к товару в базе данных, в случае успеха возвращает True,
+        иначе False, если товар не найден в базе данных.
     """
-    async with AsyncSession(engine) as session:
-        async with session.begin():
-            result = PriceHistory(product_id=product_id, price=price)
-            session.add(result)
-            await session.commit()
+    result = PriceHistory(product_id=product_id, price=price)
+    if not result:
+        return None
+    session.add(result)
+    await session.commit()
+    return True
+
+
+async def delete_item(product_id: int,
+                      session: AsyncSession = Depends(get_session)) -> bool:
+    """
+    Функция удаления товара и его истории цен.
+
+    Args:
+
+        product_id: id товара
+    
+    Notes:
+
+        Удаляет товар и его историю цен по переданному id, в случае успеха
+        возвращает True, иначе False, если товар не найден в базе данных.
+
+    """
+    result = session.scalars(select(Product).filter_by(id=product_id)).first()
+    if not result:
+        return None
+    session.delete(result)
+    await session.commit()
+    return True
+
+
+async def select_item(product_id: int,
+                      session: AsyncSession = Depends(get_session)) -> bool:
+    """
+    Функция получения данных о товаре.
+
+    Args:
+
+        product_id: id товара
+    
+    Returns:
+
+        Возвращает булево значение, которое говорит от наличие
+        товара в базе данных.
+    """
+    result = await session.scalars(
+        select(Product).filter_by(id=product_id)).first()
+    return bool(result.first())
+
+
+async def select_history_price(
+        product_id: int,
+        session: AsyncSession = Depends(get_session)) -> bool:
+    """
+    Функция получения истории цен товара.
+
+    Args:
+
+        product_id: id товара
+    
+    Returns:
+
+        Возвращает историю цен на товар и время появления эти цен.
+    """
+    result = await session.scalars(
+        select(PriceHistory).filter_by(product_id=product_id))
+    if not result:
+        return None
+    return result
