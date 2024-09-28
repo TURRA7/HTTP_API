@@ -20,8 +20,11 @@ async def get_html(url: str):
     }
     async with aiohttp.ClientSession() as session:
         async with session.get(url, headers=headers) as response:
-            text = await response.text()
-            return json.loads(text)
+            try:
+                text = await response.text()
+                return {"message": json.loads(text), "status_code": 200}
+            except Exception as ex:
+                return {'error': f"Проблема с получением данных о товаре: {ex}"}
 
 
 async def get_info_item(data_info: dict) -> dict:
@@ -36,11 +39,17 @@ async def get_info_item(data_info: dict) -> dict:
 
         Возвращает словарь с общей информацией о товаре.
     """
-    return {"name": data_info['body']['name'],
-            "description": data_info['body']['description'],
-            "rating": data_info['body']['rating']['star']}
+    try:
+        return {"name": data_info['body']['name'],
+                "description": data_info['body']['description'],
+                "rating": data_info['body']['rating']['star'],
+                "status_code": 200}
+    except Exception as ex:
+        return {'error': f"Проблема с получением информации о товаре: {ex}",
+                "status_code": 422}
 
 
+# Перенос в модуль мониторинга...
 async def get_price_item(data_price: dict) -> dict:
     """
     Функция поиска цены продукта.
@@ -53,4 +62,9 @@ async def get_price_item(data_price: dict) -> dict:
 
         Возвращает словарь с ценой товара.
     """
-    return {"price": data_price['body']['materialPrices'][0]['price']['salePrice']}
+    try:
+        return {"price": data_price['body']['materialPrices'][0]['price']['salePrice'],
+                "status_code": 200}
+    except Exception as ex:
+        return {'error': f"Проблема с получением цены товара: {ex}",
+                "status_code": 422}

@@ -1,26 +1,24 @@
 """Модуль для работы с базой данных."""
-import datetime
+from datetime import datetime, timezone
 from typing import AsyncGenerator
 from fastapi import Depends
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Float, select
 from sqlalchemy.ext.asyncio import (
     create_async_engine, AsyncSession)
 from sqlalchemy.orm import sessionmaker, relationship, DeclarativeBase
+from sqlalchemy import func
 
 from config import (DB_USER, DB_PASS, DB_HOST, DB_NAME)
 
-# URL базы данных.
 DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}"
-# Создание асинхронного движка.
 engine = create_async_engine(DATABASE_URL)
-# Создание асинхронной сессии.
 AsyncSessionLocal = sessionmaker(
     bind=engine,
     class_=AsyncSession,
     expire_on_commit=False
 )
 
-# Базовый декларотивный класс.
+
 class Base(DeclarativeBase):
     pass
 
@@ -69,9 +67,9 @@ class PriceHistory(Base):
     __tablename__ = "price_history"
 
     id = Column(Integer, primary_key=True)
-    product_id = Column(Integer, ForeignKey('product.id'), nullable=False)
+    product_id = Column(Integer, ForeignKey('products.id'), nullable=False)
     price = Column(Float, nullable=False)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=func.now())
 
     product = relationship("Product", back_populates="price_history")
 
@@ -109,18 +107,20 @@ async def add_item_info(name: str, description: str,
     
     Returns:
         Добавляет информацию о товаре в базе данных,
-        в случае успеха возвращает True,
-        иначе False, если товар не найден в базе данных.
+        возвращает сообщение об успехе или ошибке и статус кода.
     """
     result = Product(name=name, description=description,
                     rating=rating, url_info=url_info, url_price=url_price)
-    if not result:
-        return None
-    session.add(result)
-    await session.commit()
-    return True
+    try:
+        session.add(result)
+        await session.commit()
+        return {"message": f"Товар {name} добавлен!", "status_code": 200}
+    except Exception as ex:
+        return {"message": f"Проблемы с добавлением товара: {ex}",
+                "status_code": 422}
 
 
+# Перенос в модуль с мониторингом...
 async def add_item_price(product_id: int, price: float,
                          session: AsyncSession = Depends(get_session)) -> bool:
     """
@@ -132,15 +132,19 @@ async def add_item_price(product_id: int, price: float,
         price: Цена на товар.
     
     Returns:
-        Добавляет цену к товару в базе данных, в случае успеха возвращает True,
-        иначе False, если товар не найден в базе данных.
+        Добавляет цену к товару в базе данных,
+        возвращает сообщение об успехе или ошибке и статус кода.
     """
     result = PriceHistory(product_id=product_id, price=price)
-    if not result:
-        return None
-    session.add(result)
-    await session.commit()
-    return True
+    try:
+        session.add(result)
+        await session.commit()
+        return {"message": f"Цена {price} добавленa: {product_id}",
+                "status_code": 200}
+    except Exception as ex:
+        return {"message": f"Проблемы с добавлением цены: {ex}",
+                "status_code": 422}
+
 
 
 async def delete_item(product_id: int,
@@ -154,16 +158,21 @@ async def delete_item(product_id: int,
     
     Notes:
 
-        Удаляет товар и его историю цен по переданному id, в случае успеха
-        возвращает True, иначе False, если товар не найден в базе данных.
+        Удаляет товар и его историю цен по переданному id,
+        возвращает сообщение об успехе или ошибке и статус кода.
 
     """
-    result = session.scalars(select(Product).filter_by(id=product_id)).first()
-    if not result:
-        return None
-    session.delete(result)
-    await session.commit()
-    return True
+    result = await session.scalars(select(Product).filter_by(id=product_id))
+    try:
+        product = result.first()
+        if product:
+            await session.delete(product)
+            await session.commit()
+            return {"message": f"Товар с id: {product_id} удалён!",
+                    "status_code": 200}
+    except Exception as ex:
+        return {"message": f"Проблемы с удалением товара: {ex}",
+                "status_code": 422}
 
 
 async def select_item(product_id: int,
@@ -181,7 +190,7 @@ async def select_item(product_id: int,
         товара в базе данных.
     """
     result = await session.scalars(
-        select(Product).filter_by(id=product_id)).first()
+        select(Product).filter_by(id=product_id))
     return bool(result.first())
 
 
@@ -197,10 +206,18 @@ async def select_history_price(
     
     Returns:
 
-        Возвращает историю цен на товар и время появления эти цен.
+        Возвращает историю цен на товар и время появления этих цен в базе,
+        так же возвращает статус код, иначе возвращает
+        сообщение об ошибке и статус кода.
     """
-    result = await session.scalars(
-        select(PriceHistory).filter_by(product_id=product_id))
-    if not result:
-        return None
-    return result
+    try:
+        result = await session.scalars(
+            select(PriceHistory).filter_by(product_id=product_id))
+        history = [{"product_id": r.product_id,
+                    "price": r.price, "date": r.timestamp} for r in result]
+
+        return {"message": history, "status_code": 200}
+    except Exception as ex:
+        return {"message": f"Ошибка получения истории цен товара: {ex}", "status_code": 422}
+
+
