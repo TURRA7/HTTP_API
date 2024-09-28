@@ -3,6 +3,7 @@ from fastapi import FastAPI
 import uvicorn
 
 from database.FDataBase import create_tables
+from backend.backend import get_html
 
 
 # Приложение FastAPI

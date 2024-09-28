@@ -7,7 +7,7 @@ app_parsing = APIRouter(prefix="/parsing")
 
 
 @app_parsing.post("/add_item")
-async def add_item(url: UrlCheck) -> None:
+async def add_item(url_info: UrlCheck) -> None:
     """
     Функция добавления товара на мониторинг.
 

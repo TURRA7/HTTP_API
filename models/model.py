@@ -2,4 +2,5 @@ from pydantic import BaseModel, HttpUrl
 
 
 class UrlCheck(BaseModel):
-    url: HttpUrl
+    url_info: HttpUrl
+    url_price: HttpUrl
