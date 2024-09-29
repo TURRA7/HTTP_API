@@ -1,4 +1,15 @@
-"""Модуль моделей валидации данных."""
+"""
+Модуль моделей валидации данных.
+
+Shemas:
+
+    UrlCheck: 
+        url_info: URL от API МВИДЕО c общей ифно о товаре.
+        url_price: URL от API МВИДЕО c ифно о цене товара.
+
+    ProductId: 
+        product_id: id продукта.
+"""
 from pydantic import BaseModel, HttpUrl
 
 

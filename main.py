@@ -1,3 +1,10 @@
+"""
+Исполняющий модуль программы.
+
+Func:
+
+    main: Создаёт таблицы в базе данных.
+"""
 import asyncio
 import uvicorn
 from fastapi import FastAPI

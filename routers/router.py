@@ -1,11 +1,34 @@
+"""
+Модуль обработчиков маршрутов FastAPI.
+
+Func:
+    
+    add_product: Маршрут добавления товара. Получает на вход:
+        валидированные URL и объект сессии, парсит их,
+        добавляет спарсенную информацию в базу данных,
+        возвращает сообщение об успехе или об ошибке и статус код.
+
+    delete_product: Маршрут удаление товара. Получает на вход:
+        id товара и объект сессии, удаляет товар,
+        возвращает сообщение об успехе или об ошибке и статус код.
+
+    get_list_monitoring: Маршрут получения товаров, находящихся на мониторинге.
+        Получает на вход: объект сессии, возвращает(dict) со списком товаров
+        и статус кодом, иначе ошибку и статус код.
+
+    get_history_price_item: Маршрут получения истории цен, на заданый товар.
+        Получает на вход: id товара и объект сессии, возвращает всю историю цен
+        на товар, в том числе и время добавления цены, а так же и статус код.
+"""
 from fastapi import APIRouter, Depends
 
-from database.FDataBase import (add_item_info, add_item_price,
-                                delete_item, select_history_price,
-                                select_item, get_session, select_all_item)
+from database.FDataBase import (add_item_info, delete_item,
+                                select_history_price, select_item,
+                                get_session, select_all_item)
 from backend.backend import get_html, get_info_item
 from models.model import UrlCheck, ProductId
 from sqlalchemy.ext.asyncio import AsyncSession
+
 
 app_parsing = APIRouter(prefix="/parsing")
 
@@ -112,33 +135,4 @@ async def get_history_price_item(
                 'status_code': resault['status_code']}
     else:
         return {"message": "Товар не найден в базе данных."}
-
-
-# Перенос в модуль с мониторингом или же удаление!...
-@app_parsing.get("/add_price")
-async def add_price(
-    item_id: int,
-    price: float,
-    session: AsyncSession = Depends(get_session)):
-    """
-    Функция добавления цены на товар.
-
-    Args:
-        
-        item_id: id товара.
-        price: Актуальная цена на товар.
-
-    returns:
-
-        Добавляет цену на товар в базу.
-    """
-    product = ProductId(product_id=item_id)
-    if await select_item(product_id=product.product_id, session=session):
-        resault = await add_item_price(product_id=product.product_id,
-                                       price=price, session=session)
-        return {"message": resault['message'],
-                'status_code': resault['status_code']}
-    else:
-        return {"message": "Товар не найден в базе данных."}
-
-    
+   

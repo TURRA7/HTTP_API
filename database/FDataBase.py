@@ -1,5 +1,48 @@
-"""Модуль для работы с базой данных."""
-from datetime import datetime, timezone
+"""
+Модуль для работы с базой данных.
+
+Models:
+
+    Product: Содержит основную инфу о товаре:
+        id, название, описание, рейтинг,
+        URL на API с основными данными,
+        URL на API с данными о цене.
+        Так же связь с таблицей истории цен.
+
+    PriceHistory: Содержит:
+        id записи, id товара к которому она прикреплена,
+        цена на товар, время добавления цены, а так же связь
+        с таблицей информации о продукте.
+
+Func:
+
+    get_session: Создаёт асинхронную сессию,
+        для работы с базой данных
+    
+    create_tables: Создаёт таблицы в базе данных.
+    delete_tables: Удаляет таблицы из базы данных.
+
+    add_item_info: Получает на вход:
+        название товара, описание товара, рейтинг товара,
+        URL от API с общей информацией о товаре,
+        URL от API с информацией о цене товара, объект сессии,
+        сохраняет эти данные в базу, возвращает сообщение об
+        успехе или ошибке и статус код.
+
+    delete_item: Получает на вход: id товара и объект сессии,
+        удаляет товар из базы данных, возвращает сообщение об
+        успехе или ошибке и статус код.
+
+    select_item: Получает на вход: id товара и объект сессии,
+        проверяет наличие товара в базе данных, 
+        возвращает булево значение True если товар есть в базе, иначе False.
+
+    select_history_price: Получает на вход: id товара и объект сессии,
+        возвращает историю цен на заданый товар и статус код(dict).
+
+    select_all_item: Получает на вход: объект сессии, возвращает
+        все товары, находящиеся в базе данных то есть на мониторинге(dict).
+"""
 from typing import AsyncGenerator
 from fastapi import Depends
 from sqlalchemy import (Column, DateTime, ForeignKey,
@@ -94,9 +137,9 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def add_item_info(name: str, description: str,
-                   rating: float, url_info: str,
-                   url_price: str,
-                   session: AsyncSession = Depends(get_session)) -> bool:
+                        rating: float, url_info: str,
+                        url_price: str,
+                        session: AsyncSession = Depends(get_session)) -> dict:
     """
     Функция добавления товара.
 
@@ -112,7 +155,7 @@ async def add_item_info(name: str, description: str,
     Returns:
     
         Добавляет информацию о товаре в базе данных,
-        возвращает сообщение об успехе или ошибке и статус кода.
+        возвращает сообщение об успехе или ошибке и статус код.
     """
     result = Product(name=name, description=description,
                     rating=rating, url_info=url_info, url_price=url_price)
@@ -125,36 +168,8 @@ async def add_item_info(name: str, description: str,
                 "status_code": 422}
 
 
-# Перенос в модуль с мониторингом...
-async def add_item_price(product_id: int, price: float,
-                         session: AsyncSession = Depends(get_session)) -> bool:
-    """
-    Функция добавления цены на товар.
-
-    Args:
-
-        product_id: id товара, к которому добавляется цена
-        price: Цена на товар.
-        session: Асинхронная сессия для базы данных.
-    
-    Returns:
-        Добавляет цену к товару в базе данных,
-        возвращает сообщение об успехе или ошибке и статус кода.
-    """
-    result = PriceHistory(product_id=product_id, price=price)
-    try:
-        session.add(result)
-        await session.commit()
-        return {"message": f"Цена {price} добавленa: {product_id}",
-                "status_code": 200}
-    except Exception as ex:
-        return {"message": f"Проблемы с добавлением цены: {ex}",
-                "status_code": 422}
-
-
-
 async def delete_item(product_id: int,
-                      session: AsyncSession = Depends(get_session)) -> bool:
+                      session: AsyncSession = Depends(get_session)) -> dict:
     """
     Функция удаления товара и его истории цен.
 
@@ -166,7 +181,7 @@ async def delete_item(product_id: int,
     Notes:
 
         Удаляет товар и его историю цен по переданному id,
-        возвращает сообщение об успехе или ошибке и статус кода.
+        возвращает сообщение об успехе или ошибке и статус код.
 
     """
     result = await session.scalars(select(Product).filter_by(id=product_id))
@@ -204,7 +219,7 @@ async def select_item(product_id: int,
 
 async def select_history_price(
         product_id: int,
-        session: AsyncSession = Depends(get_session)) -> bool:
+        session: AsyncSession = Depends(get_session)) -> dict:
     """
     Функция получения истории цен товара.
 

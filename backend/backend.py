@@ -1,3 +1,14 @@
+"""
+Моудль логики парсинга товаров в магазине МВИДЕО.
+
+Func:
+
+    get_html: Получает на вход url (данные полученые от API магазина),
+        возвращает спарсенные данные(dict).
+
+    get_info_item: Получает на вход спарсенные данные(dict), возвращает:
+        название товара, описание товара и рейтинг товара.
+"""
 import json
 import aiohttp
 
@@ -46,25 +57,4 @@ async def get_info_item(data_info: dict) -> dict:
                 "status_code": 200}
     except Exception as ex:
         return {'error': f"Проблема с получением информации о товаре: {ex}",
-                "status_code": 422}
-
-
-# Перенос в модуль мониторинга...
-async def get_price_item(data_price: dict) -> dict:
-    """
-    Функция поиска цены продукта.
-
-    Args:
-
-        data_price: Словарь с данными о цене(страница с API).
-
-    Returns:
-
-        Возвращает словарь с ценой товара.
-    """
-    try:
-        return {"price": data_price['body']['materialPrices'][0]['price']['salePrice'],
-                "status_code": 200}
-    except Exception as ex:
-        return {'error': f"Проблема с получением цены товара: {ex}",
                 "status_code": 422}
