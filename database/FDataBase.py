@@ -2,7 +2,8 @@
 from datetime import datetime, timezone
 from typing import AsyncGenerator
 from fastapi import Depends
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Float, select
+from sqlalchemy import (Column, DateTime, ForeignKey,
+                        Integer, String, Float, select)
 from sqlalchemy.ext.asyncio import (
     create_async_engine, AsyncSession)
 from sqlalchemy.orm import sessionmaker, relationship, DeclarativeBase
