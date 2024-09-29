@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends
 
-from database.FDataBase import (add_item_info, add_item_price, delete_item, select_history_price,
-                                select_item, get_session)
+from database.FDataBase import (add_item_info, add_item_price,
+                                delete_item, select_history_price,
+                                select_item, get_session, select_all_item)
 from backend.backend import get_html, get_info_item
 from models.model import UrlCheck, ProductId
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -72,7 +73,7 @@ async def delete_product(item_id: int,
         return {"message": "Товар не найден в базе данных."}
 
 
-@app_parsing.get("/get_list_monitoring/{item_id}")
+@app_parsing.get("/get_list_monitoring")
 async def get_list_monitoring(
     session: AsyncSession = Depends(get_session)) -> dict:
     """
@@ -83,10 +84,12 @@ async def get_list_monitoring(
         Возвращает словарь со списком товаров,
         находящихся в данный момент на мониторинге.
     """
-    pass
+    resault = await select_all_item(session=session)
+    return {"message": resault['message'],
+                'status_code': resault['status_code']}
 
 
-@app_parsing.get("/get_history_price_item{item_id}")
+@app_parsing.get("/get_history_price_item/{item_id}")
 async def get_history_price_item(
     item_id: int,
     session: AsyncSession = Depends(get_session)) -> dict:

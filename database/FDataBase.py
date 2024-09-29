@@ -87,6 +87,7 @@ async def delete_tables() -> None:
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    """Функция получения асинхронной сессии."""
     async with AsyncSessionLocal() as session:
             yield session
 
@@ -99,13 +100,16 @@ async def add_item_info(name: str, description: str,
     Функция добавления товара.
 
     Args:
+
         name: Название товара.
         description: Описание товара.
         rating: Рейтинг товара.
         url_info: Ссылка на API с общей информацией о товаре.
         url_price: Ссылка на API с информацией о цене товара.
+        session: Асинхронная сессия для базы данных.
     
     Returns:
+    
         Добавляет информацию о товаре в базе данных,
         возвращает сообщение об успехе или ошибке и статус кода.
     """
@@ -130,6 +134,7 @@ async def add_item_price(product_id: int, price: float,
 
         product_id: id товара, к которому добавляется цена
         price: Цена на товар.
+        session: Асинхронная сессия для базы данных.
     
     Returns:
         Добавляет цену к товару в базе данных,
@@ -155,6 +160,7 @@ async def delete_item(product_id: int,
     Args:
 
         product_id: id товара
+        session: Асинхронная сессия для базы данных.
     
     Notes:
 
@@ -183,6 +189,7 @@ async def select_item(product_id: int,
     Args:
 
         product_id: id товара
+        session: Асинхронная сессия для базы данных.
     
     Returns:
 
@@ -203,6 +210,7 @@ async def select_history_price(
     Args:
 
         product_id: id товара
+        session: Асинхронная сессия для базы данных.
     
     Returns:
 
@@ -213,11 +221,36 @@ async def select_history_price(
     try:
         result = await session.scalars(
             select(PriceHistory).filter_by(product_id=product_id))
-        history = [{"product_id": r.product_id,
-                    "price": r.price, "date": r.timestamp} for r in result]
+        history = [{"product_id": res.product_id,
+                    "price": res.price,
+                    "date": res.timestamp} for res in result]
 
         return {"message": history, "status_code": 200}
     except Exception as ex:
-        return {"message": f"Ошибка получения истории цен товара: {ex}", "status_code": 422}
+        return {"message": f"Ошибка получения истории цен товара: {ex}",
+                "status_code": 422}
 
+
+async def select_all_item(
+        session: AsyncSession = Depends(get_session)) -> dict:
+    """
+    Функция получения товаров на мониторинге.
+
+    Args:
+
+        session: Асинхронная сессия для базы данных.
+    
+    Returns:
+
+        Возвращает список(словарь) товаров, находящихся на мониторинге
+    """
+    try:
+        result = await session.scalars(select(Product))
+        products = [{"id": res.id, "name": res.name,
+                    "description": res.description,
+                    "rating": round(res.rating, 1)} for res in result]
+        return {"message": products, "status_code": 200}
+    except Exception as ex:
+        return {"message": f"Ошибка получения товаров на мониторинге: {ex}",
+                "status_code": 422}
 
