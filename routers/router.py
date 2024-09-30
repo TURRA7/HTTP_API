@@ -69,7 +69,7 @@ async def add_product(url: UrlCheck,
             return {"message": resault['message'],
                     'status_code': resault['status_code']}
         else:
-            return {"error": data["error"], "status_code": data["status_code"]}
+            return {"message": data["error"], "status_code": data["status_code"]}
         
 
 @app_parsing.delete("/delete_product/{item_id}")
@@ -108,8 +108,12 @@ async def get_list_monitoring(
         находящихся в данный момент на мониторинге.
     """
     resault = await select_all_item(session=session)
-    return {"message": resault['message'],
-                'status_code': resault['status_code']}
+    if resault['message'] == []:
+        return {"message": "Нет товаров на мониторинге!",
+                    'status_code': resault['status_code']}
+    else:
+        return {"message": resault['message'],
+                    'status_code': resault['status_code']}
 
 
 @app_parsing.get("/get_history_price_item/{item_id}")
